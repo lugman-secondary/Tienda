@@ -1,0 +1,61 @@
+(function ($, Drupal, window, document, undefined) {
+  Drupal.behaviors.fostersviewmap = {
+    attach: function(context, settings) {
+
+      $('#views-exposed-form-map-page-map', context).once('fosters-views-map', function() {
+        var form = $(this),
+            switcher = form.find('#edit-switcher'),
+            switcherLabel = switcher.parent().find('label'),
+            services = form.find('.form-item-fserv select'),
+            deliveryText = form.find('.delivery-info');
+
+        // Change label text depending of checkbox value.
+        function switcherText() {
+          if (switcher.is(':checked')) {
+            switcherLabel.html(Drupal.t('Or search by restaurant ...'));
+          }
+          else {
+            switcherLabel.html(Drupal.t('Or search by Postal code, address ...'));
+          }
+        }
+
+        switcherText();
+        switcher.change(function() {
+          switcherText();
+        });
+
+        // Since this form can behave like two different forms depending on the
+        // switcher value, we need to clean some values up.
+        form.submit(function() {
+          if (switcher.is(':checked')) {
+            form.find('select[name="sp"]').val('');
+            form.find('select[name="sl"]').val('');
+            form.find('select[name="sr"]').val('');
+          }
+          else {
+            form.find('.geofield-proximity-origin').val('');
+          }
+        });
+
+        // Toggle info delivery text when delivery selected, form #states doesnt
+        // works with fields type #markup.
+        function deliveryInfoToggle() {
+          if (services.val() == 21) {
+            deliveryText.slideDown('fast');
+          }
+          else {
+            deliveryText.slideUp('fast');
+          }
+        }
+
+        deliveryInfoToggle();
+        services.change(function() {
+          deliveryInfoToggle();
+        });
+
+      });
+
+    }
+  };
+})(jQuery, Drupal, this, this.document);
+;

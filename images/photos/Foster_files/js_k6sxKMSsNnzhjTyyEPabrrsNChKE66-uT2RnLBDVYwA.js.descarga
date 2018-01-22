@@ -1,0 +1,767 @@
+/**
+ * @file
+ * A JavaScript file for the theme.
+ *
+ * In order for this JavaScript to be loaded on pages, see the instructions in
+ * the README.txt next to this file.
+ */
+
+// JavaScript should be made compatible with libraries other than jQuery by
+// wrapping it with an "anonymous closure". See:
+// - https://drupal.org/node/1446420
+// - http://www.adequatelygood.com/2010/3/JavaScript-Module-Pattern-In-Depth
+(function($, Drupal, window, document, undefined) {
+  // To understand behaviors, see https://drupal.org/node/756722#behaviors
+  Drupal.behaviors.fh_zen = {
+    attach: function(context, settings) {
+      var breakpoint = window
+        .getComputedStyle(document.querySelector("body"), ":before")
+        .getPropertyValue("content")
+        .replace(/"/g, "");
+
+      $(window).resize(function() {
+        breakpoint = window
+          .getComputedStyle(document.querySelector("body"), ":before")
+          .getPropertyValue("content")
+          .replace(/"/g, "");
+      });
+
+      // =========================================================================
+      // Fleslider mobile
+      // =========================================================================
+      $(".flexslider-mobile", context).once("fh-zen-flexslider", function() {
+        var slideMobile = $(this);
+
+        slideMobile.before(slideMobile.html());
+        showSlide(slideMobile, breakpoint);
+
+        function showSlide(slideMobile) {
+          slideMobile.flexslider({
+            prevText: " ",
+            nextText: " ",
+            slideshowSpeed: 4000
+          });
+        }
+      });
+
+      // =========================================================================
+      // Main menu
+      // =========================================================================
+      $("#block-system-main-menu").once("fh-zen-menu", function() {
+        var menu = $(this);
+
+        // Close menu.
+        menu.find(".menu__link").click(function() {
+          if ($(window).width() <= 975) {
+            $("#menu-mobile").click();
+          }
+        });
+
+        // Create mobile menu icon for hide/show.
+        $("#block-fosters-popup-search-fh-popup-search-block-link").before(
+          '<span id="menu-mobile" />'
+        );
+        $("#menu-mobile").click(function() {
+          menu.slideToggle("fast");
+        });
+
+        // Scroll to anchors only at frontpage.
+        /*if ($("body").hasClass("front")) {
+          // Replace href with anchors.
+          var menuLinks = menu.find(".menu__link.fosterianos");
+          $.each(menuLinks, function(index, element) {
+            var href = $(element).attr("href");
+            // Remove href "/" to scroll.
+            var newHref = href.replace("/", "");
+            $(element).attr("href", newHref);
+          });
+
+          // Scroll to the differents sections smoothly.
+          menuLinks.click(function() {
+            var root = $("html, body"),
+              target = $(this).attr("href").replace("#", "");
+
+            root.animate(
+              { scrollTop: $('[name="' + target + '"').offset().top },
+              1000
+            );
+            return false;
+          });
+        }*/
+      });
+
+      $("#page", context).once("fh-zen-page", function() {
+        var page = $(this);
+
+        pageMargin();
+        $(window).resize(function() {
+          pageMargin();
+        });
+
+        function pageMargin() {
+          var header = $("#header-wrapper").height();
+
+          page.css("margin-top", header + "px");
+        }
+      });
+
+      // =========================================================================
+      // Flexslider.
+      // =========================================================================
+      $(".flexslider", context)
+        .not(".view-slideshow-front .flexslider")
+        .once("fh-zen-flexslider", function() {
+          $(this).flexslider({
+            prevText: " ",
+            nextText: " ",
+            slideshowSpeed: 4000
+          });
+        });
+
+      // Home slideshow.
+      $(".view-slideshow-front .flexslider", context).once("fh-zen-flexslider", function() {
+        var slider = $(this);
+
+        slider.find(".slides > li").each(function(index, value) {
+          var slide = $(value),
+            durationDOM = slide.find(".field-slide-front-duration"),
+            duration = durationDOM.length ? durationDOM.text() : 5000;
+          slide.attr("data-duration", duration);
+        });
+
+        slider.flexslider({
+          prevText: " ",
+          nextText: " ",
+          start: function(slide) {
+            slide.stop();
+            slide.vars.slideshowSpeed = $(
+              slide.slides[slide.currentSlide]
+            ).data("duration");
+            slide.play();
+            videoManager();
+          },
+          after: function(slide) {
+            slide.stop();
+            slide.vars.slideshowSpeed = $(
+              slide.slides[slide.currentSlide]
+            ).data("duration");
+            slide.play();
+            videoManager();
+          }
+        });
+
+        // Plays the video in the active slide.
+        function videoManager() {
+          var curSlide = slider.find("li.flex-active-slide"),
+            iframe = curSlide.find("[id^=media-youtube-]"),
+            videos = slider.find("[id^=media-youtube-]");
+
+          // Remove autoplay for all carousel videos.
+          videos.each(function(i, video) {
+            var videoHref = $(video).attr("src");
+            videoHref = videoHref.replace("&autoplay=1", "");
+            $(video).attr("src", videoHref);
+          });
+
+          // Play de active slide video.
+          iframe.attr("src", iframe.attr("src") + "&autoplay=1");
+        }
+      });
+
+      // Scroll from slideshow to next section.
+      $(".node-slide-front.node-teaser span.scroll").once("fh-zen-scroll", function() {
+        var destination = $(this).closest(".panel-pane").next(),
+          root = $("html, body");
+
+        $(this).click(function() {
+          root.animate({ scrollTop: destination.offset().top }, 1000);
+        });
+      });
+
+      // =========================================================================
+      // Play youtube video.
+      // =========================================================================
+      $(".group-video-wrapper .actions", context).once("fh-zen-youtube-actions", function() {
+        var actions = $(this),
+          video = $(this)
+            .parents(".group-video-wrapper")
+            .find(".field-youtube");
+
+        actions.clone().appendTo(video);
+      });
+
+      $(".video-reload", context).once("fh-zen-youtube", function() {
+        var video = $(this)
+          .parents(".group-video-wrapper")
+          .find(".field-youtube iframe");
+
+        $(this).click(function() {
+          var videoSrc = video.attr("src");
+          videoSrc = videoSrc.replace("&autoplay=1", "");
+          video.attr("src", videoSrc + "&autoplay=1");
+        });
+      });
+
+      // =========================================================================
+      // Panel tabs as drop down menu for mobile.
+      // =========================================================================
+      $(".ui-tabs-nav").once("fh-zen-tabs", function() {
+        var tabs = $(this),
+          carteHeader = $(".pane-carte-header-content-type, .pane-carte-header-no-restaurant");
+
+        // Create element for toggle tabs.
+        tabs.before(
+          $("<span />", {
+            class: "ui-tabs--drop-down"
+          })
+        );
+        var dropDown = tabs.parent().find(".ui-tabs--drop-down");
+
+        getSelectedTab();
+        tabs.find("a").click(function() {
+          getSelectedTab();
+          if (dropDown.is(":visible")) {
+            dropDown.click();
+          }
+        });
+
+        function getSelectedTab() {
+          var selected = tabs.find("> li.ui-state-active a"),
+            tabNumber = selected.attr("href").replace("#ctab-", "");
+
+          dropDown.text(selected.html());
+          carteHeaderBg(tabNumber);
+        }
+
+        // Toggle tabs.
+        dropDown.click(function() {
+          $(this).toggleClass("active");
+          tabs.slideToggle(250);
+        });
+
+        // /carte header changes background for tab selected.
+        function carteHeaderBg(tabNumber) {
+          if (carteHeader.length > 0) {
+            carteHeader.attr("data-bg", tabNumber);
+          }
+          carteHeader.find(".popup-search").attr("data-cat", tabNumber);
+        }
+      });
+
+      // =========================================================================
+      // fosterXperience social blocks toggle
+      // =========================================================================
+      $(".fx-social-selector").once("fh-zen-fosterxperience", function() {
+        var trigger = $(this).find(".fx-social-selector__selected"),
+          options = $(this).find("ul"),
+          blocks = $(this).parent().find(".fx-social-block");
+
+        trigger.click(function(event) {
+          $(this).toggleClass("active");
+          options.slideToggle(250);
+        });
+
+        options.find("li").click(function() {
+          var selected = $(this).html();
+          trigger.html(selected).click();
+          blocks.removeClass("show").addClass("hide");
+          blocks.filter("." + selected).removeClass("hide").addClass("show");
+        });
+      });
+
+      // =========================================================================
+      // Webform radiobuttons as table.
+      // =========================================================================
+      // Retrieve labels values, and copy them in a custom div simulating table
+      // header.
+      $(".webform-restaurant-suggestions .wf-wp-valoration").once("fh-zen-webform", function() {
+        var fieldset = $(this),
+          main_label = fieldset.find(".webform-component-radios > label"),
+          labels = fieldset.find(".form-item-submitted-valoration-meal > label");
+
+        $("<div />", { class: "valoration-header" }).prependTo(fieldset);
+        var header = $(this).find(".valoration-header");
+
+        $("<span />", {
+          class: "header-td first",
+          html: fieldset.find(".fieldset-legend").html()
+        }).appendTo(header);
+
+        labels.each(function(index, value) {
+          $("<span />", {
+            class: "header-td",
+            html: $(value).html()
+          }).appendTo(header);
+        });
+
+        main_label.each(function(index, value) {
+          $(value).prependTo(
+            $(value).parent(".form-item").find("> .form-radios")
+          );
+        });
+      });
+
+      // =========================================================================
+      // Product.
+      // =========================================================================
+      $(".node-product.view-mode-full").once("fh-zen-product", function() {
+        // Move category icon above title.
+        var family = $(this).find(".field-ref-category"),
+          title = $(this).find("h1");
+
+        familyPosition();
+        $(window).resize(function() {
+          familyPosition();
+        });
+
+        function familyPosition() {
+          if (breakpoint == "mobile") {
+            family.insertBefore(title);
+          } else {
+            family.insertAfter(title);
+          }
+        }
+
+        // Hide product new if doesnt exists.
+        $(this)
+          .find(".field-product-new .product-new__wrapper.hidden")
+          .parent()
+          .hide();
+      });
+
+      // =========================================================================
+      // Search map form
+      // =========================================================================
+      // Change inputs order, cant do it through form #weights.
+      $(".fh-map-search-form").once("fh-zen-search", function() {
+        var form = $(this).find("> div");
+
+        form.find(".form-title").prependTo(form);
+        form
+          .find(".form-item-switcher")
+          .insertBefore(
+            form.find(".views-widget-filter-field_ref_service_tid")
+          );
+      });
+
+      // In tablet mobile, if theres resutls in the map scrolls to them.
+      $(".view-id-map.view-display-id-panel_pane_map").once("fh-zen-map-results", function() {
+        var view = $(this), results = $(this).find(".views-row");
+
+        // Views row links to restaurant.
+        $.each(results, function(index, el) {
+          $(this).click(function() {
+            window.location.href = $(el)
+              .find(".views-field.views-field-title a")
+              .attr("href");
+          });
+        });
+
+        if (breakpoint == "tablet" || breakpoint == "mobile") {
+          if (results.length > 0) {
+            var headerHeight = $("#header-wrapper").height() + 30;
+
+            $("html, body").animate(
+              { scrollTop: view.offset().top - headerHeight },
+              10
+            );
+          }
+        }
+      });
+
+      // =========================================================================
+      // Set HTML Select list wrapper to better render
+      // =========================================================================
+      function customizeSelect(select) {
+        select
+          .wrap('<div class="select-list-wrapper" />')
+          .parent()
+          .append(
+            '<span class="select-list-span"><span class="select-list-span-text"></span><span class="select-list-span-icon"></span></span>'
+          );
+
+        select.closest(".select-list-wrapper").each(function(key, value) {
+          var select = $(value).children("select"),
+            name = select.find("option:selected").html();
+
+          $(value)
+            .children(".select-list-span")
+            .children(".select-list-span-text")
+            .html(name);
+        });
+
+        select.focus(function() {
+          $(this).parent().children(".select-list-span").addClass("onfocus");
+        });
+
+        select.blur(function() {
+          $(this).parent().children(".select-list-span").removeClass("onfocus");
+        });
+
+        if (select.hasClass("error")) {
+          $(this).parent().children(".select-list-span").addClass("error");
+        }
+
+        select.change(function() {
+          var select_value = $(this).children("option:selected").text();
+
+          $(this)
+            .parent()
+            .children(".select-list-span")
+            .children(".select-list-span-text")
+            .text(select_value);
+        });
+      }
+
+      var selects = $("select").not(".fh-search select");
+      $(selects, context).once("fh-zen-select", function() {
+        customizeSelect($(this));
+      });
+
+      // =========================================================================
+      // Slide front link to custom field link.
+      // =========================================================================
+      $(".node-slide-front").once("fh-zen-slide", function() {
+        var link = $(this).find(".field-slide-front-link a"),
+          images = $(this).find(
+            ".field-image-lang img, .field-image-responsive img"
+          );
+
+        images.click(function(event) {
+          link[0].click();
+        });
+      });
+
+      // =========================================================================
+      // Restaurant services scrolls to menu.
+      // =========================================================================
+      $(".restaurant__service a").once("fh-zen-scroll", function() {
+        var tabs = $("#mtab");
+
+        $(this).click(function(event) {
+          var href = $(this).attr("href"),
+            target = href.substr(href.indexOf("#")),
+            tab = tabs.find('a[href="' + target + '"]');
+
+          event.preventDefault();
+          tab.click();
+          $("html, body").animate({ scrollTop: tab.offset().top - 150 }, 1000);
+        });
+      });
+
+      $(".node-type-restaurant").once("fh-zen-scroll", function() {
+        var restaurant = $(this), hash = window.location.hash, target;
+
+        if (hash.length > 0) {
+          var headerHeight = $("#header-wrapper").height();
+
+          if (hash.indexOf("ctab") >= 0) {
+            target = restaurant.find(".pane-node-map-pane-map + .pane-title-subtitle-content-type");
+          } else {
+            target = hash;
+          }
+
+          $("html, body").animate(
+            { scrollTop: $(target).offset().top - headerHeight },
+            5
+          );
+        }
+      });
+
+      // =========================================================================
+      // Carte scroll.
+      // =========================================================================
+      $(".foster-page-carte-norest, .foster-page-carte").once("fh-zen-scroll", function() {
+        $(".pane-carte-header-content-type, .pane-carte-header-no-restaurant").append('<span class="scroll"></span>');
+
+        $(this).find(".scroll").click(function() {
+          if ($("#ctab").length > 0) {
+            $("html, body").animate(
+              { scrollTop: $("#ctab").offset().top - 120 },
+              1000
+            );
+          }
+          if ($(".menu-categories-menu").length > 0) {
+            $("html, body").animate(
+              { scrollTop: $(".menu-categories-menu").offset().top - 120 },
+              1000
+            );
+          }
+        });
+      });
+
+      // =========================================================================
+      // Restaurant carte scroll.
+      // =========================================================================
+      $(".pane-restaurant-link-carte").once("fh-zen-scroll", function() {
+        var link = $(this).find("a"), target = link.attr("href");
+        headerHeight = $("#header-wrapper").height() + 110;
+
+        if (!breakpoint.length) {
+          headerHeight += 60;
+        }
+
+        // $('.node-restaurant.view-mode-full h1:not(.field-title-field)').after($(this));
+
+        link.click(function() {
+          $("html, body").animate(
+            { scrollTop: $(target).offset().top - headerHeight },
+            1000
+          );
+        });
+      });
+
+      // Map form scroll.
+      $(".view-map .scroll-map").once("fh-zen-scroll", function() {
+        var target = $(".fh-map-search-form");
+
+        $(this).click(function(event) {
+          $("html, body").animate({ scrollTop: 0 }, 1000);
+        });
+      });
+
+      // =========================================================================
+      // Product full body
+      // =========================================================================
+      $(".node-product.view-mode-full .field-body").once("fh-zen-body", function() {
+        var productBody = $(this);
+
+        productBody.after(
+          $("<span>", {
+            class: "show-more",
+            html: Drupal.t("Show more")
+          })
+        );
+
+        $(".show-more").toggle(
+          function() {
+            $(this).addClass("active");
+            $(this).html(Drupal.t("Show less"));
+            productBody.find(".mobile-hide").addClass("active");
+          },
+          function() {
+            $(this).removeClass("active");
+            $(this).html(Drupal.t("Show more"));
+            productBody.find(".mobile-hide").removeClass("active");
+          }
+        );
+      });
+
+      // =========================================================================
+      // Restaurant context block hide when clearin session link.
+      // =========================================================================
+      $("#block-fostershollywood-fhr-current-restaurant-block").once("fh-zen-session", function() {
+        var block = $(this);
+
+        block.find(".restaurant-logout").click(function() {
+          block.hide();
+          $("#page").css("margin-top", $("#header-wrapper").height() + "px");
+        });
+      });
+
+      // =========================================================================
+      // MAP
+      // =========================================================================
+      // Map form scroll.
+      $(".pane-search-map .scroll-map").once("fh-zen-scroll", function() {
+        var target = $(".fh-search-form");
+
+        $(this).click(function(event) {
+          $("html, body").animate({ scrollTop: 0 }, 1000);
+        });
+      });
+
+      // COOKIES
+      $("body").once("fh-zen-cookies", function() {
+        setTimeout(function() {
+          var cookieBanner = $("#sliding-popup");
+          cookieBanner.find(".find-more-button").click(function() {
+            cookieBanner.find(".agree-button").click();
+          });
+        }, 1100);
+      });
+
+      // Scroll to iberica promo on mobile
+      $(".foster-page-promos .promo-custom").once("fh-zen-promos", function() {
+        var promo = $(this), headerHeight = $("#header-wrapper").height();
+
+        if (breakpoint == "mobile") {
+          $("html, body").animate(
+            { scrollTop: promo.offset().top - headerHeight },
+            0
+          );
+        }
+      });
+
+      $(".field-product-suggestions .node-product ").once("fh-zen-promos", function() {
+        var productNew = $(this).find(".field-product-new");
+        if (!productNew.children().length) {
+          productNew.hide();
+        }
+      });
+
+      // =========================================================================
+      // POPUP EMPLEO
+      // =========================================================================
+      $(".page-node-691", context).once("fh-zen-popup", function() {
+        $.colorbox({
+          width: "100%",
+          maxWidth: "776px",
+          close: Drupal.t("Close"),
+          transition: "fade",
+          className: "cb-job",
+          fixed: true,
+          html: '<p>ESTÁS EN NUESTRA SECCIÓN DE SOLICITUDES DE EMPLEO. POR FAVOR, PARA OTROS COMENTARIOS, SUGERENCIAS O RECLAMACIONES, DIRÍGETE A LA SECCIÓN DE <a href="/contacto-y-sugerencias">"CONTACTO Y SUGERENCIAS"</a> DE LA WEB.<br>GRACIAS</p>'
+        });
+      });
+
+      // =========================================================================
+      // WOW classes, last resort.
+      // =========================================================================
+      /*$('.pane-bean-fosterianos').once('fh-zen-wow', function() {
+      $(this).find('.field-image img').addClass('wow slideInUp');
+      $(this).find('.field-body').addClass('wow fadeInLeft');
+    });
+
+    // WOW.js magic init.
+    $('body').once('fh-animated', function() {
+      new WOW().init();
+    });*/
+
+      $(".page-carta").once("fh-zen-carte", function() {
+        $(this).addClass(
+          "page-carta-" +
+            $(".menu-categories-menu").attr("data-active").slice(6)
+        );
+      });
+
+      smoothScrollAnchor(".scroll-franchise", 700, context);
+
+      turnMenuSelect(".menu-categories-menu .menu", context);
+
+      // @NOTE Disabled for now.
+      /*
+    if (breakpoint === 'mobile') {
+      setPlaceholder('input[type="text"]');
+      setPlaceholder('input[type="email"]');
+      setPlaceholder('textarea');
+    }
+    */
+
+      setFullHeight(".fh-search");
+
+      // =========================================================================
+      // LANGUAGE BLOCK DROPDOWN
+      // =========================================================================
+      $(".block-locale").once("fh-zen-language", function() {
+        var menu = $(this).find("ul.language-switcher-locale-url");
+        $(this).find(".language-switcher-header").click(function() {
+          $(this).toggleClass("active");
+          menu.slideToggle("fast");
+        });
+      });
+    }
+  };
+
+  /**
+ * Set full height.
+ * @param string selector
+ * @param array context
+ */
+  function setFullHeight(selector, context) {
+    $(selector, context).once(function() {
+      var height = $(window).height() - $("#header").height();
+
+      updateHeight(height, selector);
+
+      $(window).resize(function() {
+        height = $(window).height() - $("#header").height();
+        updateHeight(height, selector);
+      });
+
+      function updateHeight(h, e) {
+        if ($(window).width() >= 1024) {
+          $(e).height(h);
+        }
+      }
+    });
+  }
+
+  /**
+ * Set label as placeholder.
+ *
+ * @param string selector
+ * @param array context
+ */
+  function setPlaceholder(selector, context) {
+    $(selector).each(function() {
+      $(this, context).once("fh-placeholder", function() {
+        var item = $(this),
+          label = $("body").find('label[for="' + item.attr("id") + '"]');
+
+        if ($(this).is("select")) {
+          // @TODO
+        }
+
+        if ($(label).length > 0) {
+          label.hide();
+          item.attr("placeholder", label.text());
+        }
+      });
+    });
+  }
+
+  /**
+ * Set smooth animation to the link.
+ * @param string link
+ * @param int time
+ * @param array context
+ */
+  function smoothScrollAnchor(link, time, context) {
+    $(link).once("fh-smooth-link", function() {
+      $(this).click(function() {
+        $("html, body").animate(
+          {
+            scrollTop: $($.attr(this, "href")).offset().top
+          },
+          time
+        );
+        return false;
+      });
+    });
+  }
+
+  function turnMenuSelect(selector, context) {
+    $(selector, context).once("fh-zen-menu", function() {
+      var menu = $(this);
+
+      // Create element for toggle tabs.
+      menu.before(
+        $("<span />", {
+          class: "menu-mobile--drop-down"
+        })
+      );
+      var dropDown = menu.parent().find(".menu-mobile--drop-down");
+
+      getActiveItem();
+      menu.find("a").click(function() {
+        getSelectedTab();
+        if (dropDown.is(":visible")) {
+          dropDown.click();
+        }
+      });
+
+      function getActiveItem() {
+        var selected = menu.find("> li.active-trail a");
+        dropDown.text(selected.html());
+      }
+
+      // Toggle tabs.
+      dropDown.click(function() {
+        $(this).toggleClass("active");
+        menu.slideToggle(250);
+      });
+    });
+  }
+})(jQuery, Drupal, this, this.document);
+;
